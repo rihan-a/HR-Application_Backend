@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: hr-application-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: FRONTEND_URL
+        value: https://hr-application-frontend-ruby.vercel.app
+      - key: GEMINI_API_KEY
+        sync: false  # Set this in Render dashboard
