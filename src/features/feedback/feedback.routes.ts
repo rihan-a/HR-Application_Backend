@@ -19,6 +19,9 @@ router.post('/profiles/:profileId', feedbackController.createFeedback.bind(feedb
 // Enhance feedback text using AI
 router.post('/enhance', feedbackController.enhanceFeedback.bind(feedbackController));
 
+
+// api routes for future use (NOT USED) -------------------------------------------------------------
+
 // Get specific feedback by ID
 router.get('/:feedbackId', feedbackController.getFeedbackById.bind(feedbackController));
 
