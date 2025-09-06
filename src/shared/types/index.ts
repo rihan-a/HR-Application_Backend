@@ -22,7 +22,7 @@ export interface EmployeeProfile {
   profileImage?: string;
   bio?: string;
   skills: string[];
-  
+
   // Sensitive data (manager/owner only)
   email: string;
   phone: string;
@@ -35,7 +35,7 @@ export interface EmployeeProfile {
     phone: string;
     relationship: string;
   };
-  
+
   // Additional professional info (manager/owner only)
   performanceRating?: number;
   certifications?: string[];
@@ -44,7 +44,7 @@ export interface EmployeeProfile {
     position: string;
     duration: string;
   }[];
-  
+
   // Feedback & requests
   feedback: Feedback[];
   absenceRequests: AbsenceRequest[];
@@ -53,7 +53,7 @@ export interface EmployeeProfile {
 export interface Feedback {
   id: string;
   fromUserId: string;
-  fromUserName: string;
+  fromUserName?: string; // Optional - populated dynamically for API responses
   toUserId: string; // Add recipient ID for role-based filtering
   content: string;
   enhancedContent?: string;
@@ -64,6 +64,7 @@ export interface Feedback {
 
 export interface AbsenceRequest {
   id: string;
+  employeeId?: string;
   startDate: string;
   endDate: string;
   reason: string;
