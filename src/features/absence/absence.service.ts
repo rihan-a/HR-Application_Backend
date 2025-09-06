@@ -12,7 +12,11 @@ export class AbsenceService {
   getAllAbsenceRequests(): AbsenceRequest[] {
     const allRequests: AbsenceRequest[] = [];
     mockProfiles.forEach(profile => {
-      allRequests.push(...profile.absenceRequests);
+      const requestsWithEmployeeId = profile.absenceRequests.map(request => ({
+        ...request,
+        employeeId: profile.id
+      }));
+      allRequests.push(...requestsWithEmployeeId);
     });
     return allRequests.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
@@ -33,6 +37,7 @@ export class AbsenceService {
 
     const newRequest: AbsenceRequest = {
       id: `absence_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      employeeId: employeeId,
       startDate: requestData.startDate,
       endDate: requestData.endDate,
       reason: requestData.reason,
@@ -80,7 +85,7 @@ export class AbsenceService {
     };
 
     // Update the profile
-    const updatedRequests = foundProfile.absenceRequests.map(req => 
+    const updatedRequests = foundProfile.absenceRequests.map(req =>
       req.id === requestId ? updatedRequest : req
     );
 
@@ -174,7 +179,7 @@ export class AbsenceService {
     totalDaysRequested: number;
   } {
     const requests = this.getAbsenceRequestsByEmployeeId(employeeId);
-    
+
     const stats = {
       totalRequests: requests.length,
       pendingRequests: requests.filter(r => r.status === AbsenceStatus.PENDING).length,
