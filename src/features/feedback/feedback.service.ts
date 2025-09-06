@@ -1,53 +1,6 @@
 import { Feedback } from '../../shared/types/index.js';
 import { UserRole } from '../../shared/types/index.js';
-
-// Mock data for development with more realistic feedback scenarios
-const mockFeedback: Feedback[] = [
-  {
-    id: '1',
-    fromUserId: 'user2',
-    fromUserName: 'Sarah Johnson',
-    toUserId: 'user1', // Add recipient ID
-    content: 'Great teamwork on the project! You always communicate clearly and meet deadlines.',
-    enhancedContent: 'I appreciate your exceptional teamwork on the project. Your clear communication and consistent ability to meet deadlines have been invaluable to our success.',
-    isEnhanced: true,
-    createdAt: '2024-01-15T10:30:00Z',
-    updatedAt: '2024-01-15T10:30:00Z'
-  },
-  {
-    id: '2',
-    fromUserId: 'user3',
-    fromUserName: 'Mike Chen',
-    toUserId: 'user1', // Add recipient ID
-    content: 'You could improve your time management skills. Sometimes meetings run over.',
-    enhancedContent: 'I have noticed opportunities to enhance your time management skills. Meetings occasionally run over schedule, and developing more structured time allocation could benefit both you and the team.',
-    isEnhanced: true,
-    createdAt: '2024-01-14T14:20:00Z',
-    updatedAt: '2024-01-14T14:20:00Z'
-  },
-  {
-    id: '3',
-    fromUserId: 'user4',
-    fromUserName: 'Emily Rodriguez',
-    toUserId: 'user2', // Different recipient
-    content: 'Your technical skills are amazing! Love working with you.',
-    enhancedContent: 'Your technical expertise is truly impressive! I thoroughly enjoy collaborating with you and appreciate the valuable insights you bring to our projects.',
-    isEnhanced: true,
-    createdAt: '2024-01-13T09:15:00Z',
-    updatedAt: '2024-01-13T09:15:00Z'
-  },
-  {
-    id: '4',
-    fromUserId: 'user1',
-    fromUserName: 'John Manager',
-    toUserId: 'user3', // Different recipient
-    content: 'You need to improve your communication with the team.',
-    enhancedContent: 'I\'ve observed opportunities to enhance your team communication. Clear and consistent communication is essential for our collaborative success, and I believe we can work together to strengthen this aspect of your performance.',
-    isEnhanced: true,
-    createdAt: '2024-01-12T16:30:00Z',
-    updatedAt: '2024-01-12T16:30:00Z'
-  }
-];
+import { mockFeedback, getUserFullName } from '../../shared/services/mockData.js';
 
 export class FeedbackService {
   private feedback: Feedback[] = [...mockFeedback];
@@ -58,10 +11,12 @@ export class FeedbackService {
 
   // Get feedback based on user role and permissions
   async getFeedbackByProfileId(profileId: string, currentUser: { id: string; role: UserRole }): Promise<Feedback[]> {
+    let filteredFeedback: Feedback[];
+    
     if (currentUser.role === UserRole.MANAGER) {
       // Managers can see all feedback for any profile
       console.log('👑 Manager accessing all feedback for profile:', profileId);
-      return this.feedback.filter(f => f.toUserId === profileId);
+      filteredFeedback = this.feedback.filter(f => f.toUserId === profileId);
     } else {
       // Employees and coworkers can only see feedback they received (for their own profile)
       // or feedback they wrote (for any profile)
@@ -69,25 +24,32 @@ export class FeedbackService {
 
       if (currentUser.id === profileId) {
         // User is viewing their own profile - show feedback they received
-        return this.feedback.filter(f => f.toUserId === profileId);
+        filteredFeedback = this.feedback.filter(f => f.toUserId === profileId);
       } else {
         // User is viewing another profile - show only feedback they wrote
-        return this.feedback.filter(f => f.fromUserId === currentUser.id && f.toUserId === profileId);
+        filteredFeedback = this.feedback.filter(f => f.fromUserId === currentUser.id && f.toUserId === profileId);
       }
     }
+    
+    // Add user names to filtered feedback
+    return filteredFeedback.map(f => ({
+      ...f,
+      fromUserName: getUserFullName(f.fromUserId)
+    }));
   }
 
   // Get feedback received by the current user (for main feedback page)
   async getFeedbackReceivedByUser(currentUser: { id: string; role: UserRole }): Promise<Feedback[]> {
-    if (currentUser.role === UserRole.MANAGER) {
-      // Managers can see all feedback across the organization
-      console.log('👑 Manager accessing all feedback across organization');
-      return this.feedback;
-    } else {
+    let filteredFeedback: Feedback[];
       // Employees and coworkers can only see feedback they received
       console.log(`👤 User ${currentUser.id} (${currentUser.role}) accessing their received feedback`);
-      return this.feedback.filter(f => f.toUserId === currentUser.id);
-    }
+      filteredFeedback = this.feedback.filter(f => f.toUserId === currentUser.id);
+    
+    // Add user names to filtered feedback
+    return filteredFeedback.map(f => ({
+      ...f,
+      fromUserName: getUserFullName(f.fromUserId)
+    }));
   }
 
   // Create new feedback
@@ -101,7 +63,8 @@ export class FeedbackService {
     };
 
     this.feedback.push(newFeedback);
-    console.log(`📝 New feedback created from ${feedbackData.fromUserName} to profile ${profileId}`);
+    const fromUserName = getUserFullName(feedbackData.fromUserId);
+    console.log(`📝 New feedback created from ${fromUserName} to profile ${profileId}`);
     return newFeedback;
   }
 
@@ -209,7 +172,37 @@ export class FeedbackService {
 
   // Get feedback by ID
   async getFeedbackById(feedbackId: string): Promise<Feedback | null> {
-    return this.feedback.find(f => f.id === feedbackId) || null;
+    const feedback = this.feedback.find(f => f.id === feedbackId);
+    if (!feedback) return null;
+    
+    return {
+      ...feedback,
+      fromUserName: getUserFullName(feedback.fromUserId)
+    };
+  }
+
+  // Get feedback count for a specific profile
+  getFeedbackCountForProfile(profileId: string): number {
+    return this.feedback.filter(f => f.toUserId === profileId).length;
+  }
+
+  // Get feedback counts for multiple profiles (bulk operation for efficiency)
+  getFeedbackCountsForProfiles(profileIds: string[]): Record<string, number> {
+    const counts: Record<string, number> = {};
+    
+    // Initialize all counts to 0
+    profileIds.forEach(id => {
+      counts[id] = 0;
+    });
+    
+    // Count feedback for each profile
+    this.feedback.forEach(feedback => {
+      if (counts.hasOwnProperty(feedback.toUserId)) {
+        counts[feedback.toUserId]++;
+      }
+    });
+    
+    return counts;
   }
 }
 
