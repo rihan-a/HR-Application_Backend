@@ -48,20 +48,19 @@ export class FeedbackController {
   async createFeedback(req: Request, res: Response): Promise<void> {
     try {
       const { profileId } = req.params;
-      const { fromUserId, fromUserName, content, enhancedContent, isEnhanced } = req.body;
+      const { fromUserId, content, enhancedContent, isEnhanced } = req.body;
 
       // Validate required fields
-      if (!fromUserId || !fromUserName || !content) {
+      if (!fromUserId || !content) {
         res.status(400).json({
           success: false,
-          error: 'Missing required fields: fromUserId, fromUserName, content'
+          error: 'Missing required fields: fromUserId, content'
         });
         return;
       }
 
       const newFeedback = await feedbackService.createFeedback(profileId, {
         fromUserId,
-        fromUserName,
         toUserId: profileId, // Set recipient to the profile being reviewed
         content,
         enhancedContent: enhancedContent || content,
