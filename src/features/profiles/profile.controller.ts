@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { findProfileById, mockProfiles, updateProfileById } from '../../shared/services/mockData.js';
 import { UserRole, EmployeeProfile } from '../../shared/types/index.js';
+import { feedbackService } from '../feedback/feedback.service.js';
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
@@ -83,7 +84,7 @@ export const updateProfile = async (req: Request, res: Response) => {
 export const listProfiles = async (req: Request, res: Response) => {
   try {
     const user = req.user!;
-    const { search, department, role } = req.query;
+    const { search, department } = req.query;
 
     // Only managers can list all profiles
     if (user.role !== UserRole.MANAGER) {
@@ -95,7 +96,7 @@ export const listProfiles = async (req: Request, res: Response) => {
     // Apply search filter
     if (search && typeof search === 'string') {
       const searchLower = search.toLowerCase();
-      filteredProfiles = filteredProfiles.filter(profile => 
+      filteredProfiles = filteredProfiles.filter(profile =>
         profile.firstName.toLowerCase().includes(searchLower) ||
         profile.lastName.toLowerCase().includes(searchLower) ||
         profile.position.toLowerCase().includes(searchLower) ||
@@ -105,10 +106,14 @@ export const listProfiles = async (req: Request, res: Response) => {
 
     // Apply department filter
     if (department && typeof department === 'string') {
-      filteredProfiles = filteredProfiles.filter(profile => 
+      filteredProfiles = filteredProfiles.filter(profile =>
         profile.department === department
       );
     }
+
+    // Get real feedback counts for all profiles
+    const profileIds = filteredProfiles.map(p => p.id);
+    const feedbackCounts = feedbackService.getFeedbackCountsForProfiles(profileIds);
 
     // Return comprehensive profile data for managers
     const profiles = filteredProfiles.map(profile => ({
@@ -123,7 +128,8 @@ export const listProfiles = async (req: Request, res: Response) => {
       startDate: profile.startDate,
       employeeId: profile.employeeId,
       performanceRating: profile.performanceRating,
-      profileImage: profile.profileImage
+      profileImage: profile.profileImage,
+      feedbackCount: feedbackCounts[profile.id] || 0,
     }));
 
     res.json({ profiles, total: profiles.length });
@@ -158,7 +164,7 @@ export const browseProfiles = async (req: Request, res: Response) => {
     // Apply search filter
     if (search && typeof search === 'string') {
       const searchLower = search.toLowerCase();
-      filteredProfiles = filteredProfiles.filter(profile => 
+      filteredProfiles = filteredProfiles.filter(profile =>
         profile.firstName.toLowerCase().includes(searchLower) ||
         profile.lastName.toLowerCase().includes(searchLower) ||
         profile.position.toLowerCase().includes(searchLower) ||
@@ -168,10 +174,14 @@ export const browseProfiles = async (req: Request, res: Response) => {
 
     // Apply department filter
     if (department && typeof department === 'string') {
-      filteredProfiles = filteredProfiles.filter(profile => 
+      filteredProfiles = filteredProfiles.filter(profile =>
         profile.department === department
       );
     }
+
+    // Get real feedback counts for all profiles
+    const profileIds = filteredProfiles.map(p => p.id);
+    const feedbackCounts = feedbackService.getFeedbackCountsForProfiles(profileIds);
 
     // Return only public data for co-workers and employees
     const profiles = filteredProfiles.map(profile => ({
@@ -184,7 +194,7 @@ export const browseProfiles = async (req: Request, res: Response) => {
       bio: profile.bio,
       skills: profile.skills,
       // Include feedback count for context
-      feedbackCount: profile.feedback.length,
+      feedbackCount: feedbackCounts[profile.id] || 0,
       // Include current user indicator
       isCurrentUser: profile.id === user.id
     }));
