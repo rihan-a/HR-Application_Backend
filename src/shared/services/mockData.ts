@@ -60,6 +60,60 @@ export const mockUsers: User[] = [
   }
 ];
 
+// Centralized feedback data (single source of truth)
+export const mockFeedback: Feedback[] = [
+  {
+    id: 'f1',
+    fromUserId: '1',
+    toUserId: '2',
+    content: 'Great teamwork on the project! You always communicate clearly and meet deadlines.',
+    enhancedContent: 'I appreciate your exceptional teamwork on the project. Your clear communication and consistent ability to meet deadlines have been invaluable to our success.',
+    isEnhanced: true,
+    createdAt: '2024-01-15T10:30:00Z',
+    updatedAt: '2024-01-15T10:30:00Z'
+  },
+  {
+    id: 'f2',
+    fromUserId: '2',
+    toUserId: '1',
+    content: 'You could improve your time management skills. Sometimes meetings run over.',
+    enhancedContent: 'I have noticed opportunities to enhance your time management skills. Meetings occasionally run over schedule, and developing more structured time allocation could benefit both you and the team.',
+    isEnhanced: true,
+    createdAt: '2024-01-14T14:20:00Z',
+    updatedAt: '2024-01-14T14:20:00Z'
+  },
+  {
+    id: 'f3',
+    fromUserId: '3',
+    toUserId: '2',
+    content: 'Your technical skills are amazing! Love working with you.',
+    enhancedContent: 'Your technical expertise is truly impressive! I thoroughly enjoy collaborating with you and appreciate the valuable insights you bring to our projects.',
+    isEnhanced: true,
+    createdAt: '2024-01-13T09:15:00Z',
+    updatedAt: '2024-01-13T09:15:00Z'
+  },
+  {
+    id: 'f4',
+    fromUserId: '4',
+    toUserId: '2',
+    content: 'You need to improve your communication with the team.',
+    enhancedContent: 'I\'ve observed opportunities to enhance your team communication. Clear and consistent communication is essential for our collaborative success, and I believe we can work together to strengthen this aspect of your performance.',
+    isEnhanced: true,
+    createdAt: '2024-01-12T16:30:00Z',
+    updatedAt: '2024-01-12T16:30:00Z'
+  },
+  {
+    id: 'f5',
+    fromUserId: '5',
+    toUserId: '3',
+    content: 'Excellent sales performance this quarter. Keep up the great work!',
+    enhancedContent: 'Your sales performance this quarter has been exceptional. Your dedication and strategic approach have significantly contributed to our team\'s success. Keep up the outstanding work!',
+    isEnhanced: true,
+    createdAt: '2024-01-10T11:45:00Z',
+    updatedAt: '2024-01-10T11:45:00Z'
+  }
+];
+
 // Mock employee profiles
 export const mockProfiles: EmployeeProfile[] = [
   {
@@ -82,7 +136,7 @@ export const mockProfiles: EmployeeProfile[] = [
       phone: '+1-555-0124',
       relationship: 'Spouse'
     },
-    feedback: [],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: []
   },
   {
@@ -105,19 +159,7 @@ export const mockProfiles: EmployeeProfile[] = [
       phone: '+1-555-0126',
       relationship: 'Sister'
     },
-    feedback: [
-      {
-        id: '1',
-        fromUserId: '3',
-        fromUserName: 'Emily Davis',
-        toUserId: '2', // Recipient is Michael (id: '2')
-        content: 'Great team player and always willing to help with debugging issues.',
-        enhancedContent: 'Michael is an exceptional team player who consistently demonstrates a collaborative spirit and is always willing to assist with debugging complex technical issues.',
-        isEnhanced: true,
-        createdAt: '2024-01-15T10:00:00Z',
-        updatedAt: '2024-01-15T10:00:00Z'
-      }
-    ],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: [
       {
         id: '1',
@@ -159,7 +201,7 @@ export const mockProfiles: EmployeeProfile[] = [
       phone: '+1-555-0128',
       relationship: 'Father'
     },
-    feedback: [],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: [
       {
         id: '3',
@@ -198,7 +240,7 @@ export const mockProfiles: EmployeeProfile[] = [
       { company: 'Google', position: 'Senior Engineer', duration: '2015-2018' },
       { company: 'Microsoft', position: 'Software Engineer', duration: '2012-2015' }
     ],
-    feedback: [],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: []
   },
   {
@@ -226,7 +268,7 @@ export const mockProfiles: EmployeeProfile[] = [
     workHistory: [
       { company: 'Salesforce', position: 'HR Specialist', duration: '2016-2018' }
     ],
-    feedback: [],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: [
       {
         id: '4',
@@ -264,7 +306,7 @@ export const mockProfiles: EmployeeProfile[] = [
     workHistory: [
       { company: 'Oracle', position: 'Account Executive', duration: '2020-2022' }
     ],
-    feedback: [],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: [
       {
         id: '5',
@@ -302,7 +344,7 @@ export const mockProfiles: EmployeeProfile[] = [
     workHistory: [
       { company: 'Meta', position: 'Marketing Coordinator', duration: '2020-2022' }
     ],
-    feedback: [],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: [
       {
         id: '6',
@@ -347,7 +389,7 @@ export const mockProfiles: EmployeeProfile[] = [
     performanceRating: 4.0,
     certifications: ['React Developer', 'JavaScript Fundamentals'],
     workHistory: [    ],
-    feedback: [],
+    feedback: [], // Feedback is now managed centrally
     absenceRequests: [
       {
         id: '8',
@@ -394,4 +436,20 @@ export const getSessionUser = (sessionId: string): User | undefined => {
 
 export const removeSession = (sessionId: string): boolean => {
   return mockSessions.delete(sessionId);
+};
+
+// Helper function to get user's full name by ID
+export const getUserFullName = (userId: string): string => {
+  const user = mockUsers.find(u => u.id === userId);
+  return user ? `${user.firstName} ${user.lastName}` : 'Unknown User';
+};
+
+// Helper function to get feedback for a specific user
+export const getFeedbackForUser = (userId: string): Feedback[] => {
+  return mockFeedback.filter(f => f.toUserId === userId);
+};
+
+// Helper function to get feedback by a specific user
+export const getFeedbackByUser = (userId: string): Feedback[] => {
+  return mockFeedback.filter(f => f.fromUserId === userId);
 };
