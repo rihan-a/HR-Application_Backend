@@ -41,13 +41,7 @@ export const login = async (req: Request, res: Response) => {
     console.log('🔑 Session created:', sessionId);
 
     const response: AuthResponse = {
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        firstName: user.firstName,
-        lastName: user.lastName
-      },
+      user: user,
       token: sessionId
     };
 
