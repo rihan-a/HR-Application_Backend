@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { findProfileById, mockProfiles, updateProfileById } from '../../shared/services/mockData.js';
 import { UserRole, EmployeeProfile } from '../../shared/types/index.js';
 import { feedbackService } from '../feedback/feedback.service.js';
+import { hasPermission, canAccessResource, PERMISSIONS } from '../../shared/types/permissions.js';
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
@@ -12,31 +13,15 @@ export const getProfile = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    // Filter data based on user role
     const user = req.user!;
-    let filteredProfile: Partial<EmployeeProfile> = { ...profile };
+    let filteredProfile: Partial<EmployeeProfile>;
 
-    if (user.role === UserRole.COWORKER) {
-      if (user.id === profile.id) {
-        // Co-workers can see their own full profile
-        filteredProfile = { ...profile };
-      } else {
-        // Co-workers only see public data for other profiles
-        filteredProfile = {
-          id: profile.id,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          position: profile.position,
-          department: profile.department,
-          profileImage: profile.profileImage,
-          bio: profile.bio,
-          skills: profile.skills,
-          feedback: profile.feedback,
-          absenceRequests: profile.absenceRequests
-        };
-      }
-    } else if (user.role === UserRole.EMPLOYEE && user.id !== profile.id) {
-      // Employees can see other profiles with limited public data (same as co-workers)
+    // Use permission-based filtering
+    if (canAccessResource(user, PERMISSIONS.EMPLOYEE_PROFILE.READ_ALL, id)) {
+      // User has full access (managers or own profile)
+      filteredProfile = { ...profile };
+    } else if (hasPermission(user, PERMISSIONS.EMPLOYEE_PROFILE.READ_PUBLIC)) {
+      // User has public access only
       filteredProfile = {
         id: profile.id,
         firstName: profile.firstName,
@@ -49,6 +34,8 @@ export const getProfile = async (req: Request, res: Response) => {
         feedback: profile.feedback,
         absenceRequests: profile.absenceRequests
       };
+    } else {
+      return res.status(403).json({ error: 'Access denied' });
     }
 
     res.json({ profile: filteredProfile });
@@ -64,9 +51,14 @@ export const updateProfile = async (req: Request, res: Response) => {
     const user = req.user!;
     const updateData = req.body;
 
-    // Check if user can edit this profile
-    if (user.role !== UserRole.MANAGER && user.id !== id) {
+    // Check if user can edit this profile using permissions
+    if (!canAccessResource(user, PERMISSIONS.EMPLOYEE_PROFILE.EDIT_ALL, id)) {
       return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Check for salary editing permission if salary is being updated
+    if (updateData.salary !== undefined && !hasPermission(user, PERMISSIONS.EMPLOYEE_PROFILE.EDIT_SALARY)) {
+      return res.status(403).json({ error: 'Insufficient permissions to edit salary' });
     }
 
     const updatedProfile = updateProfileById(id, updateData);
@@ -86,8 +78,8 @@ export const listProfiles = async (req: Request, res: Response) => {
     const user = req.user!;
     const { search, department } = req.query;
 
-    // Only managers can list all profiles
-    if (user.role !== UserRole.MANAGER) {
+    // Check permission to read all profiles
+    if (!hasPermission(user, PERMISSIONS.EMPLOYEE_PROFILE.READ_ALL)) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -154,9 +146,14 @@ export const browseProfiles = async (req: Request, res: Response) => {
     const user = req.user!;
     const { search, department } = req.query;
 
-    // Co-workers and employees can browse profiles for feedback
-    if (user.role === UserRole.MANAGER) {
-      return res.status(400).json({ error: 'Use /list/all endpoint for managers' });
+    // Check permission to read public profiles
+    if (!hasPermission(user, PERMISSIONS.EMPLOYEE_PROFILE.READ_PUBLIC)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Managers should use the full list endpoint
+    if (hasPermission(user, PERMISSIONS.EMPLOYEE_PROFILE.READ_ALL)) {
+      return res.status(400).json({ error: 'Use /list/all endpoint for full access' });
     }
 
     let filteredProfiles = mockProfiles;
