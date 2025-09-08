@@ -1,6 +1,6 @@
-import { Feedback } from '../../shared/types/index.js';
-import { UserRole } from '../../shared/types/index.js';
+import { Feedback, UserRole } from '../../shared/types/index.js';
 import { mockFeedback, getUserFullName } from '../../shared/services/mockData.js';
+import { hasPermission, UserWithPermissions, PERMISSIONS } from '../../shared/types/permissions.js';
 
 export class FeedbackService {
   private feedback: Feedback[] = [...mockFeedback];
@@ -9,18 +9,18 @@ export class FeedbackService {
     console.log('🔑 Feedback service initialized with role-based access control');
   }
 
-  // Get feedback based on user role and permissions
-  async getFeedbackByProfileId(profileId: string, currentUser: { id: string; role: UserRole }): Promise<Feedback[]> {
+  // Get feedback based on user permissions
+  async getFeedbackByProfileId(profileId: string, currentUser: UserWithPermissions): Promise<Feedback[]> {
     let filteredFeedback: Feedback[];
-    
-    if (currentUser.role === UserRole.MANAGER) {
-      // Managers can see all feedback for any profile
-      console.log('👑 Manager accessing all feedback for profile:', profileId);
+
+    if (hasPermission(currentUser, PERMISSIONS.FEEDBACK.READ_ALL)) {
+      // Users with READ_ALL permission can see all feedback for any profile
+      console.log('👑 User with READ_ALL permission accessing all feedback for profile:', profileId);
       filteredFeedback = this.feedback.filter(f => f.toUserId === profileId);
-    } else {
-      // Employees and coworkers can only see feedback they received (for their own profile)
+    } else if (hasPermission(currentUser, PERMISSIONS.FEEDBACK.READ_OWN)) {
+      // Users with READ_OWN permission can only see feedback they received (for their own profile)
       // or feedback they wrote (for any profile)
-      console.log(`👤 User ${currentUser.id} (${currentUser.role}) accessing feedback for profile ${profileId}`);
+      console.log(`👤 User ${currentUser.id} accessing feedback for profile ${profileId}`);
 
       if (currentUser.id === profileId) {
         // User is viewing their own profile - show feedback they received
@@ -29,8 +29,12 @@ export class FeedbackService {
         // User is viewing another profile - show only feedback they wrote
         filteredFeedback = this.feedback.filter(f => f.fromUserId === currentUser.id && f.toUserId === profileId);
       }
+    } else {
+      // User has no permission to read feedback
+      console.log(`🚫 User ${currentUser.id} has no permission to read feedback`);
+      filteredFeedback = [];
     }
-    
+
     // Add user names to filtered feedback
     return filteredFeedback.map(f => ({
       ...f,
@@ -39,12 +43,18 @@ export class FeedbackService {
   }
 
   // Get feedback received by the current user (for main feedback page)
-  async getFeedbackReceivedByUser(currentUser: { id: string; role: UserRole }): Promise<Feedback[]> {
+  async getFeedbackReceivedByUser(currentUser: UserWithPermissions): Promise<Feedback[]> {
     let filteredFeedback: Feedback[];
-      // Employees and coworkers can only see feedback they received
-      console.log(`👤 User ${currentUser.id} (${currentUser.role}) accessing their received feedback`);
-      filteredFeedback = this.feedback.filter(f => f.toUserId === currentUser.id);
     
+    if (!hasPermission(currentUser, PERMISSIONS.FEEDBACK.READ_OWN)) {
+      console.log(`🚫 User ${currentUser.id} has no permission to read their own feedback`);
+      return [];
+    }
+    
+    // Users can see feedback they received
+    console.log(`👤 User ${currentUser.id} accessing their received feedback`);
+    filteredFeedback = this.feedback.filter(f => f.toUserId === currentUser.id);
+
     // Add user names to filtered feedback
     return filteredFeedback.map(f => ({
       ...f,
@@ -174,7 +184,7 @@ export class FeedbackService {
   async getFeedbackById(feedbackId: string): Promise<Feedback | null> {
     const feedback = this.feedback.find(f => f.id === feedbackId);
     if (!feedback) return null;
-    
+
     return {
       ...feedback,
       fromUserName: getUserFullName(feedback.fromUserId)
@@ -189,19 +199,19 @@ export class FeedbackService {
   // Get feedback counts for multiple profiles (bulk operation for efficiency)
   getFeedbackCountsForProfiles(profileIds: string[]): Record<string, number> {
     const counts: Record<string, number> = {};
-    
+
     // Initialize all counts to 0
     profileIds.forEach(id => {
       counts[id] = 0;
     });
-    
+
     // Count feedback for each profile
     this.feedback.forEach(feedback => {
       if (counts.hasOwnProperty(feedback.toUserId)) {
         counts[feedback.toUserId]++;
       }
     });
-    
+
     return counts;
   }
 }
